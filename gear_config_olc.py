@@ -9,6 +9,35 @@ import olc
 from . import gear_config
 from mudsys import add_cmd
 
+# Helper function for tabular display
+def format_tabular_list(items, markers=None, line_width=78):
+    """Format a list of items in tabular form with optional markers"""
+    if not items:
+        return "  (none)\n"
+    
+    # Calculate the width needed for each item (including marker and spacing)
+    max_item_width = max(len(item) for item in items)
+    marker_width = 2 if markers else 0  # "* " or "  "
+    spacing = 2  # Space between columns
+    column_width = max_item_width + marker_width + spacing
+    
+    # Calculate how many columns fit in the line width
+    cols_per_line = max(1, (line_width - 2) // column_width)
+    
+    result = ""
+    for i in range(0, len(items), cols_per_line):
+        line_items = items[i:i + cols_per_line]
+        line = "  "
+        
+        for item in line_items:
+            marker = markers.get(item, " ") if markers else " "
+            formatted = f"{marker} {item}".ljust(column_width)
+            line += formatted
+        
+        result += line.rstrip() + "\n"
+    
+    return result
+
 # OLC return values
 MENU_CHOICE_INVALID = -1
 MENU_NOCHOICE = 0
@@ -24,8 +53,7 @@ def gear_config_menu(sock, data):
 {c2{n) Edit equipped item configuration
 
 {cQ{n) Quit
-
-Enter choice: """)
+""")
 
 def gear_config_chooser(sock, data, choice):
     """Handle main gear config menu choices"""
@@ -61,8 +89,7 @@ def wielded_config_menu(sock, data):
 {c4{n) Special attacks ({y%d{n): %s
 
 {cQ{n) Return to main menu
-
-Enter choice: """ % (
+""" % (
         len(weapon_types), ", ".join(weapon_types[:5]) + ("..." if len(weapon_types) > 5 else ""),
         len(materials), ", ".join(materials[:5]) + ("..." if len(materials) > 5 else ""),
         len(properties), ", ".join(properties[:5]) + ("..." if len(properties) > 5 else ""),
@@ -109,8 +136,7 @@ def equipped_config_menu(sock, data):
 {c3{n) Special properties ({y%d{n): %s
 
 {cQ{n) Return to main menu
-
-Enter choice: """ % (
+""" % (
         len(armor_types), ", ".join(armor_types[:5]) + ("..." if len(armor_types) > 5 else ""),
         len(materials), ", ".join(materials[:5]) + ("..." if len(materials) > 5 else ""),
         len(properties), ", ".join(properties[:5]) + ("..." if len(properties) > 5 else "")
@@ -148,15 +174,13 @@ def damage_types_menu(sock, data):
 
 Current damage types ({y%d{n):
 %s
-
 {c1{n) Add damage type
 {c2{n) Remove damage type
 
 {cQ{n) Return to wielded menu
-
-Enter choice: """ % (
+""" % (
         len(damage_types),
-        "\n".join("  %d) %s" % (i+1, dt) for i, dt in enumerate(damage_types)) if damage_types else "  (none)"
+        format_tabular_list(damage_types)
     ))
 
 def damage_types_chooser(sock, data, choice):
@@ -176,8 +200,10 @@ def damage_types_parser(sock, data, choice, arg):
         sock.send_raw("Added damage type: %s\n" % arg.strip())
         return True
     elif choice == 2 and arg:
-        gear_config.remove_damage_type(arg.strip())
-        sock.send_raw("Removed damage type: %s\n" % arg.strip())
+        if gear_config.remove_damage_type(arg.strip()):
+            sock.send_raw("Removed damage type: %s\n" % arg.strip())
+        else:
+            sock.send_raw("Damage type '%s' not found.\n" % arg.strip())
         return True
     return False
 
@@ -193,15 +219,13 @@ def wielded_materials_menu(sock, data):
 
 Current materials ({y%d{n):
 %s
-
 {c1{n) Add material
 {c2{n) Remove material
 
 {cQ{n) Return to wielded menu
-
-Enter choice: """ % (
+""" % (
         len(materials),
-        "\n".join("  %d) %s" % (i+1, mat) for i, mat in enumerate(materials)) if materials else "  (none)"
+        format_tabular_list(materials)
     ))
 
 def wielded_materials_chooser(sock, data, choice):
@@ -221,8 +245,10 @@ def wielded_materials_parser(sock, data, choice, arg):
         sock.send_raw("Added material: %s\n" % arg.strip())
         return True
     elif choice == 2 and arg:
-        gear_config.remove_wielded_material(arg.strip())
-        sock.send_raw("Removed material: %s\n" % arg.strip())
+        if gear_config.remove_wielded_material(arg.strip()):
+            sock.send_raw("Removed material: %s\n" % arg.strip())
+        else:
+            sock.send_raw("Material '%s' not found.\n" % arg.strip())
         return True
     return False
 
@@ -238,15 +264,13 @@ def wielded_properties_menu(sock, data):
 
 Current properties ({y%d{n):
 %s
-
 {c1{n) Add property
 {c2{n) Remove property
 
 {cQ{n) Return to wielded menu
-
-Enter choice: """ % (
+""" % (
         len(properties),
-        "\n".join("  %d) %s" % (i+1, prop) for i, prop in enumerate(properties)) if properties else "  (none)"
+        format_tabular_list(properties)
     ))
 
 def wielded_properties_chooser(sock, data, choice):
@@ -266,8 +290,10 @@ def wielded_properties_parser(sock, data, choice, arg):
         sock.send_raw("Added property: %s\n" % arg.strip())
         return True
     elif choice == 2 and arg:
-        gear_config.remove_wielded_special_property(arg.strip())
-        sock.send_raw("Removed property: %s\n" % arg.strip())
+        if gear_config.remove_wielded_special_property(arg.strip()):
+            sock.send_raw("Removed property: %s\n" % arg.strip())
+        else:
+            sock.send_raw("Property '%s' not found.\n" % arg.strip())
         return True
     return False
 
@@ -283,15 +309,13 @@ def wielded_attacks_menu(sock, data):
 
 Current attacks ({y%d{n):
 %s
-
 {c1{n) Add attack
 {c2{n) Remove attack
 
 {cQ{n) Return to wielded menu
-
-Enter choice: """ % (
+""" % (
         len(attacks),
-        "\n".join("  %d) %s" % (i+1, att) for i, att in enumerate(attacks)) if attacks else "  (none)"
+        format_tabular_list(attacks)
     ))
 
 def wielded_attacks_chooser(sock, data, choice):
@@ -311,8 +335,10 @@ def wielded_attacks_parser(sock, data, choice, arg):
         sock.send_raw("Added attack: %s\n" % arg.strip())
         return True
     elif choice == 2 and arg:
-        gear_config.remove_wielded_special_attack(arg.strip())
-        sock.send_raw("Removed attack: %s\n" % arg.strip())
+        if gear_config.remove_wielded_special_attack(arg.strip()):
+            sock.send_raw("Removed attack: %s\n" % arg.strip())
+        else:
+            sock.send_raw("Attack '%s' not found.\n" % arg.strip())
         return True
     return False
 
@@ -328,15 +354,13 @@ def armor_types_menu(sock, data):
 
 Current armor types ({y%d{n):
 %s
-
 {c1{n) Add armor type
 {c2{n) Remove armor type
 
 {cQ{n) Return to equipped menu
-
-Enter choice: """ % (
+""" % (
         len(armor_types),
-        "\n".join("  %d) %s" % (i+1, at) for i, at in enumerate(armor_types)) if armor_types else "  (none)"
+        format_tabular_list(armor_types)
     ))
 
 def armor_types_chooser(sock, data, choice):
@@ -356,8 +380,10 @@ def armor_types_parser(sock, data, choice, arg):
         sock.send_raw("Added armor type: %s\n" % arg.strip())
         return True
     elif choice == 2 and arg:
-        gear_config.remove_equipped_type(arg.strip())
-        sock.send_raw("Removed armor type: %s\n" % arg.strip())
+        if gear_config.remove_equipped_type(arg.strip()):
+            sock.send_raw("Removed armor type: %s\n" % arg.strip())
+        else:
+            sock.send_raw("Armor type '%s' not found.\n" % arg.strip())
         return True
     return False
 
@@ -373,15 +399,13 @@ def equipped_materials_menu(sock, data):
 
 Current materials ({y%d{n):
 %s
-
 {c1{n) Add material
 {c2{n) Remove material
 
 {cQ{n) Return to equipped menu
-
-Enter choice: """ % (
+""" % (
         len(materials),
-        "\n".join("  %d) %s" % (i+1, mat) for i, mat in enumerate(materials)) if materials else "  (none)"
+        format_tabular_list(materials)
     ))
 
 def equipped_materials_chooser(sock, data, choice):
@@ -401,8 +425,10 @@ def equipped_materials_parser(sock, data, choice, arg):
         sock.send_raw("Added material: %s\n" % arg.strip())
         return True
     elif choice == 2 and arg:
-        gear_config.remove_equipped_material(arg.strip())
-        sock.send_raw("Removed material: %s\n" % arg.strip())
+        if gear_config.remove_equipped_material(arg.strip()):
+            sock.send_raw("Removed material: %s\n" % arg.strip())
+        else:
+            sock.send_raw("Material '%s' not found.\n" % arg.strip())
         return True
     return False
 
@@ -418,15 +444,13 @@ def equipped_properties_menu(sock, data):
 
 Current properties ({y%d{n):
 %s
-
 {c1{n) Add property
 {c2{n) Remove property
 
 {cQ{n) Return to equipped menu
-
-Enter choice: """ % (
+""" % (
         len(properties),
-        "\n".join("  %d) %s" % (i+1, prop) for i, prop in enumerate(properties)) if properties else "  (none)"
+        format_tabular_list(properties)
     ))
 
 def equipped_properties_chooser(sock, data, choice):
@@ -446,8 +470,10 @@ def equipped_properties_parser(sock, data, choice, arg):
         sock.send_raw("Added property: %s\n" % arg.strip())
         return True
     elif choice == 2 and arg:
-        gear_config.remove_equipped_special_property(arg.strip())
-        sock.send_raw("Removed property: %s\n" % arg.strip())
+        if gear_config.remove_equipped_special_property(arg.strip()):
+            sock.send_raw("Removed property: %s\n" % arg.strip())
+        else:
+            sock.send_raw("Property '%s' not found.\n" % arg.strip())
         return True
     return False
 
