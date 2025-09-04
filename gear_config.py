@@ -56,7 +56,7 @@ class Wielded:
             self.weapon_categories = GearCategory(["melee", "ranged", "thrown"])
             self.ranged_types = GearCategory(["bow", "crossbow", "sling", "thrown", "firearm"])
             self.materials = GearCategory(["steel", "iron", "bronze", "silver", "gold", "mithril", "adamantine", "wood", "bone", "crystal"])
-            self.special_properties = GearCategory(["magical", "blessed", "cursed", "flaming", "frost", "shock"])
+            self.special_properties = GearCategory(["versatile", "offhand", "magical", "blessed", "cursed"])
             self.special_attacks = GearCategory(["vorpal", "sharpness", "speed", "accuracy"])
     
     def store(self):
@@ -80,7 +80,7 @@ class Equipped:
         else:
             self.armor_types = GearCategory(["light", "medium", "heavy", "shield"])
             self.materials = GearCategory(["leather", "chainmail", "plate", "cloth", "dragonscale"])
-            self.special_properties = GearCategory(["magical", "blessed", "cursed", "protection", "resistance"])
+            self.special_properties = GearCategory(["magical", "blessed", "cursed", "clothing"])
     
     def store(self):
         """Returns a storage set representation"""
@@ -540,8 +540,8 @@ def get_available_body_positions():
         return [
             "floating about head", "about body", "head", "face", "ear", "neck", 
             "torso", "arm", "wing", "wrist", "left hand", "right hand", "finger", 
-            "waist", "leg", "left foot", "right foot", "hoof", "claw", "tail", "held",
-            "hands", "legs", "feet", "wings", "hooves"
+            "waist", "left leg", "right leg", "left foot", "right foot", "hoof", "claw", 
+            "tail", "held", "hands", "legs", "feet", "wings", "hooves"
         ]
 
 def register_worn_types_with_c():
