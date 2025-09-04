@@ -19,6 +19,6 @@ for fl in os.listdir(__path__[0]):
         __all__.append(fl[:-3])
 
 # import all of our modules so they can register item types and hooks
-__all__ = ['equipped', 'wielded', 'gear_config', 'gear_config_olc', 'gear_olc']
+__all__ = ['gear_aux', 'equipped', 'wielded', 'gear_config', 'gear_config_olc', 'gear_olc']
 for module in __all__:
     importlib.import_module('.' + module, package=__name__)

@@ -142,20 +142,20 @@ def equipped_parser(sock, data, choice, arg):
     return False
 
 def equipped_to_proto(data):
-    """Generate prototype code for equipped items"""
+    """Generate prototype code for equipped items using auxiliary data"""
     lines = []
     if data.armor_class > 0:
-        lines.append("me.equipped_armor_class = %d" % data.armor_class)
+        lines.append("me.getAuxiliary('equipped_data').armor_class = %d" % data.armor_class)
     if data.enchantment_level != 0:
-        lines.append("me.equipped_enchantment = %d" % data.enchantment_level)
+        lines.append("me.getAuxiliary('equipped_data').enchantment_level = %d" % data.enchantment_level)
     if data.durability != 100:
-        lines.append("me.equipped_durability = %d" % data.durability)
+        lines.append("me.getAuxiliary('equipped_data').durability = %d" % data.durability)
     if data.max_durability != 100:
-        lines.append("me.equipped_max_durability = %d" % data.max_durability)
+        lines.append("me.getAuxiliary('equipped_data').max_durability = %d" % data.max_durability)
     if data.material:
-        lines.append("me.equipped_material = \"%s\"" % data.material)
+        lines.append("me.getAuxiliary('equipped_data').material = \"%s\"" % data.material)
     if data.special_properties:
-        lines.append("me.equipped_properties = \"%s\"" % data.special_properties)
+        lines.append("me.getAuxiliary('equipped_data').special_properties = \"%s\"" % data.special_properties)
     return "\n".join(lines) + ("\n" if lines else "")
 
 # Wielded item OLC menu choices
@@ -395,32 +395,32 @@ def wielded_parser(sock, data, choice, arg):
     return False
 
 def wielded_to_proto(data):
-    """Generate prototype code for wielded items"""
+    """Generate prototype code for wielded items using auxiliary data"""
     lines = []
     if data.damage_type != "slashing":
-        lines.append("me.wielded_damage_type = \"%s\"" % data.damage_type)
+        lines.append("me.getAuxiliary('wielded_data').damage_type = \"%s\"" % data.damage_type)
     if data.weapon_category != "melee":
-        lines.append("me.wielded_weapon_category = \"%s\"" % data.weapon_category)
+        lines.append("me.getAuxiliary('wielded_data').weapon_category = \"%s\"" % data.weapon_category)
     if data.ranged_type:
-        lines.append("me.wielded_ranged_type = \"%s\"" % data.ranged_type)
+        lines.append("me.getAuxiliary('wielded_data').ranged_type = \"%s\"" % data.ranged_type)
     if data.damage_dice != "1d6":
-        lines.append("me.wielded_damage_dice = \"%s\"" % data.damage_dice)
+        lines.append("me.getAuxiliary('wielded_data').damage_dice = \"%s\"" % data.damage_dice)
     if data.damage_bonus != 0:
-        lines.append("me.wielded_damage_bonus = %d" % data.damage_bonus)
+        lines.append("me.getAuxiliary('wielded_data').damage_bonus = %d" % data.damage_bonus)
     if data.hit_bonus != 0:
-        lines.append("me.wielded_hit_bonus = %d" % data.hit_bonus)
+        lines.append("me.getAuxiliary('wielded_data').hit_bonus = %d" % data.hit_bonus)
     if data.weapon_speed != 1.0:
-        lines.append("me.wielded_weapon_speed = %.1f" % data.weapon_speed)
+        lines.append("me.getAuxiliary('wielded_data').weapon_speed = %.1f" % data.weapon_speed)
     if data.reach != 1:
-        lines.append("me.wielded_reach = %d" % data.reach)
+        lines.append("me.getAuxiliary('wielded_data').reach = %d" % data.reach)
     if data.durability != 100:
-        lines.append("me.wielded_durability = %d" % data.durability)
+        lines.append("me.getAuxiliary('wielded_data').durability = %d" % data.durability)
     if data.max_durability != 100:
-        lines.append("me.wielded_max_durability = %d" % data.max_durability)
+        lines.append("me.getAuxiliary('wielded_data').max_durability = %d" % data.max_durability)
     if data.material != "steel":
-        lines.append("me.wielded_material = \"%s\"" % data.material)
+        lines.append("me.getAuxiliary('wielded_data').material = \"%s\"" % data.material)
     if data.special_attacks:
-        lines.append("me.wielded_special_attacks = \"%s\"" % data.special_attacks)
+        lines.append("me.getAuxiliary('wielded_data').special_attacks = \"%s\"" % data.special_attacks)
     return "\n".join(lines) + ("\n" if lines else "")
 
 def init_gear_olc():
