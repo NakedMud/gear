@@ -26,6 +26,7 @@ class WieldedData:
         self.durability = 100
         self.max_durability = 100
         self.material = "steel"
+        self.special_properties = ""
         self.special_attacks = ""
         
         # Load from storage if provided
@@ -41,6 +42,7 @@ class WieldedData:
             self.durability = set_data.readInt("durability")
             self.max_durability = set_data.readInt("max_durability")
             self.material = set_data.readString("material")
+            self.special_properties = set_data.readString("special_properties")
             self.special_attacks = set_data.readString("special_attacks")
     
     def copy(self):
@@ -55,6 +57,7 @@ class WieldedData:
         new_data.durability = self.durability
         new_data.max_durability = self.max_durability
         new_data.material = self.material
+        new_data.special_properties = self.special_properties
         new_data.special_attacks = self.special_attacks
         return new_data
     
@@ -71,6 +74,7 @@ class WieldedData:
         other.durability = self.durability
         other.max_durability = self.max_durability
         other.material = self.material
+        other.special_properties = self.special_properties
         other.special_attacks = self.special_attacks
     
     def store(self):
@@ -87,6 +91,7 @@ class WieldedData:
         set_data.storeInt("durability", self.durability)
         set_data.storeInt("max_durability", self.max_durability)
         set_data.storeString("material", self.material)
+        set_data.storeString("special_properties", self.special_properties)
         set_data.storeString("special_attacks", self.special_attacks)
         return set_data
 

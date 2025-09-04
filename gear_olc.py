@@ -142,20 +142,20 @@ def equipped_parser(sock, data, choice, arg):
     return False
 
 def equipped_to_proto(data):
-    """Generate prototype code for equipped items using auxiliary data"""
+    """Generate prototype code for equipped items"""
     lines = []
     if data.armor_class > 0:
-        lines.append("me.getAuxiliary('equipped_data').armor_class = %d" % data.armor_class)
+        lines.append("me.get_type_data(\"equipped\").armor_class = %d" % data.armor_class)
     if data.enchantment_level != 0:
-        lines.append("me.getAuxiliary('equipped_data').enchantment_level = %d" % data.enchantment_level)
+        lines.append("me.get_type_data(\"equipped\").enchantment_level = %d" % data.enchantment_level)
     if data.durability != 100:
-        lines.append("me.getAuxiliary('equipped_data').durability = %d" % data.durability)
+        lines.append("me.get_type_data(\"equipped\").durability = %d" % data.durability)
     if data.max_durability != 100:
-        lines.append("me.getAuxiliary('equipped_data').max_durability = %d" % data.max_durability)
+        lines.append("me.get_type_data(\"equipped\").max_durability = %d" % data.max_durability)
     if data.material:
-        lines.append("me.getAuxiliary('equipped_data').material = \"%s\"" % data.material)
+        lines.append("me.get_type_data(\"equipped\").material = \"%s\"" % data.material)
     if data.special_properties:
-        lines.append("me.getAuxiliary('equipped_data').special_properties = \"%s\"" % data.special_properties)
+        lines.append("me.get_type_data(\"equipped\").special_properties = \"%s\"" % data.special_properties)
     return "\n".join(lines) + ("\n" if lines else "")
 
 # Wielded item OLC menu choices
@@ -170,6 +170,7 @@ WIELDED_REACH = 7
 WIELDED_DURABILITY = 8
 WIELDED_MAX_DURABILITY = 9
 WIELDED_MATERIAL = 10
+WIELDED_SPECIAL_PROPERTIES = 12
 WIELDED_SPECIAL_ATTACKS = 0
 
 def wielded_menu(sock, data):
@@ -178,6 +179,7 @@ def wielded_menu(sock, data):
     valid_categories = gear_config.get_weapon_categories()
     valid_ranged_types = gear_config.get_ranged_types()
     valid_materials = gear_config.get_wielded_materials()
+    valid_properties = gear_config.get_wielded_special_properties()
     valid_attacks = gear_config.get_wielded_special_attacks()
     
     # Show ranged type only if weapon category is ranged
@@ -199,6 +201,7 @@ def wielded_menu(sock, data):
         "{g8) Durability      : {c%d / %d\r\n"
         "{g9) Max Durability  : {c%d\r\n"
         "{gA) Material        : {c%s {g(Valid: %s)\r\n"
+        "{gC) Special Properties: {c%s {g(Valid: %s)\r\n"
         "{g0) Special Attacks : {c%s {g(Valid: %s)\r\n" % (
             data.damage_type,
             ", ".join(valid_damage_types[:3]) + ("..." if len(valid_damage_types) > 3 else ""),
@@ -215,6 +218,8 @@ def wielded_menu(sock, data):
             data.max_durability,
             data.material,
             ", ".join(valid_materials[:3]) + ("..." if len(valid_materials) > 3 else ""),
+            data.special_properties,
+            ", ".join(valid_properties[:3]) + ("..." if len(valid_properties) > 3 else ""),
             data.special_attacks,
             ", ".join(valid_attacks[:3]) + ("..." if len(valid_attacks) > 3 else "")
         )
@@ -257,6 +262,9 @@ def wielded_chooser(sock, data, option):
     elif choice == 'A':
         sock.send_raw("Enter material type: ")
         return WIELDED_MATERIAL
+    elif choice == 'C':
+        sock.send_raw("Enter special properties: ")
+        return WIELDED_SPECIAL_PROPERTIES
     elif choice == '0':
         sock.send_raw("Enter special attacks: ")
         return WIELDED_SPECIAL_ATTACKS
@@ -378,6 +386,20 @@ def wielded_parser(sock, data, choice, arg):
             sock.send_raw("Invalid material. Valid materials are: %s\n" % ", ".join(valid_materials))
             return False
     
+    elif choice == WIELDED_SPECIAL_PROPERTIES:
+        # Validate special properties (comma-separated list)
+        properties = [p.strip().lower() for p in arg.split(',') if p.strip()]
+        valid_properties = gear_config.get_wielded_special_properties()
+        invalid_properties = [p for p in properties if p not in valid_properties]
+        
+        if invalid_properties:
+            sock.send_raw("Invalid properties: %s\nValid properties are: %s\n" % 
+                         (", ".join(invalid_properties), ", ".join(valid_properties)))
+            return False
+        else:
+            data.special_properties = ", ".join(properties)
+            return True
+    
     elif choice == WIELDED_SPECIAL_ATTACKS:
         # Validate special attacks (comma-separated list)
         attacks = [a.strip().lower() for a in arg.split(',') if a.strip()]
@@ -395,32 +417,32 @@ def wielded_parser(sock, data, choice, arg):
     return False
 
 def wielded_to_proto(data):
-    """Generate prototype code for wielded items using auxiliary data"""
+    """Generate prototype code for wielded items"""
     lines = []
     if data.damage_type != "slashing":
-        lines.append("me.getAuxiliary('wielded_data').damage_type = \"%s\"" % data.damage_type)
+        lines.append("me.get_type_data(\"wielded\").damage_type = \"%s\"" % data.damage_type)
     if data.weapon_category != "melee":
-        lines.append("me.getAuxiliary('wielded_data').weapon_category = \"%s\"" % data.weapon_category)
+        lines.append("me.get_type_data(\"wielded\").weapon_category = \"%s\"" % data.weapon_category)
     if data.ranged_type:
-        lines.append("me.getAuxiliary('wielded_data').ranged_type = \"%s\"" % data.ranged_type)
+        lines.append("me.get_type_data(\"wielded\").ranged_type = \"%s\"" % data.ranged_type)
     if data.damage_dice != "1d6":
-        lines.append("me.getAuxiliary('wielded_data').damage_dice = \"%s\"" % data.damage_dice)
+        lines.append("me.get_type_data(\"wielded\").damage_dice = \"%s\"" % data.damage_dice)
     if data.damage_bonus != 0:
-        lines.append("me.getAuxiliary('wielded_data').damage_bonus = %d" % data.damage_bonus)
+        lines.append("me.get_type_data(\"wielded\").damage_bonus = %d" % data.damage_bonus)
     if data.hit_bonus != 0:
-        lines.append("me.getAuxiliary('wielded_data').hit_bonus = %d" % data.hit_bonus)
+        lines.append("me.get_type_data(\"wielded\").hit_bonus = %d" % data.hit_bonus)
     if data.weapon_speed != 1.0:
-        lines.append("me.getAuxiliary('wielded_data').weapon_speed = %.1f" % data.weapon_speed)
+        lines.append("me.get_type_data(\"wielded\").weapon_speed = %.1f" % data.weapon_speed)
     if data.reach != 1:
-        lines.append("me.getAuxiliary('wielded_data').reach = %d" % data.reach)
+        lines.append("me.get_type_data(\"wielded\").reach = %d" % data.reach)
     if data.durability != 100:
-        lines.append("me.getAuxiliary('wielded_data').durability = %d" % data.durability)
+        lines.append("me.get_type_data(\"wielded\").durability = %d" % data.durability)
     if data.max_durability != 100:
-        lines.append("me.getAuxiliary('wielded_data').max_durability = %d" % data.max_durability)
+        lines.append("me.get_type_data(\"wielded\").max_durability = %d" % data.max_durability)
     if data.material != "steel":
-        lines.append("me.getAuxiliary('wielded_data').material = \"%s\"" % data.material)
+        lines.append("me.get_type_data(\"wielded\").material = \"%s\"" % data.material)
     if data.special_attacks:
-        lines.append("me.getAuxiliary('wielded_data').special_attacks = \"%s\"" % data.special_attacks)
+        lines.append("me.get_type_data(\"wielded\").special_attacks = \"%s\"" % data.special_attacks)
     return "\n".join(lines) + ("\n" if lines else "")
 
 def init_gear_olc():

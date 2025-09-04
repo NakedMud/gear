@@ -90,21 +90,112 @@ class Equipped:
         set.storeList("special_properties", self.special_properties.store())
         return set
 
+class WornType:
+    """Represents a worn type with positions and built-in flag"""
+    def __init__(self, name="", positions=None, builtin=False):
+        self.name = name
+        self.positions = positions or []
+        self.builtin = builtin
+    
+    def store(self):
+        """Returns a storage set representation"""
+        set = storage.StorageSet()
+        set.storeString("name", self.name)
+        set.storeBool("builtin", self.builtin)
+        
+        # Store positions as list
+        positions_list = storage.StorageList()
+        for position in self.positions:
+            pos_set = storage.StorageSet()
+            pos_set.storeString("position", position)
+            positions_list.add(pos_set)
+        set.storeList("positions", positions_list)
+        return set
+
+class WornTypes:
+    """Worn types configuration"""
+    def __init__(self, storage_set=None):
+        """Initialize worn types from storage or create defaults"""
+        self.worn_types = {}
+        
+        if storage_set and storage_set.contains("worn_types"):
+            worn_types_list = storage_set.readList("worn_types")
+            for worn_type_set in worn_types_list.sets():
+                name = worn_type_set.readString("name")
+                builtin = worn_type_set.readBool("builtin")
+                
+                positions = []
+                if worn_type_set.contains("positions"):
+                    positions_list = worn_type_set.readList("positions")
+                    for pos_set in positions_list.sets():
+                        position = pos_set.readString("position")
+                        if position:
+                            positions.append(position)
+                
+                worn_type = WornType(name, positions, builtin)
+                self.worn_types[name] = worn_type
+        
+        # Always create defaults if we have no worn types (either no storage or empty storage)
+        if not self.worn_types:
+            self._create_default_worn_types()
+            # Mark that we need to save these defaults
+            self._needs_save = True
+    
+    def _create_default_worn_types(self):
+        """Create default built-in worn types"""
+        default_types = [
+            ("shirt", ["torso", "arm", "arm"], True),  # Known C built-in
+            ("pants", ["legs"], False),
+            ("helmet", ["head"], False),
+            ("boots", ["feet"], False),
+            ("gloves", ["hands"], False),
+            ("cloak", ["about body"], False),
+            ("belt", ["waist"], False),
+            ("ring", ["finger"], False),
+            ("necklace", ["neck"], False),
+            ("bracelet", ["wrist"], False)
+        ]
+        
+        for name, positions, builtin in default_types:
+            worn_type = WornType(name, positions, builtin)
+            self.worn_types[name] = worn_type
+    
+    def store(self):
+        """Returns a storage set representation"""
+        set = storage.StorageSet()
+        worn_types_list = storage.StorageList()
+        for worn_type in self.worn_types.values():
+            worn_types_list.add(worn_type.store())
+        set.storeList("worn_types", worn_types_list)
+        return set
+
 class GearConfig:
-    """Main gear configuration containing Wielded and Equipped"""
-    def __init__(self, set=None):
-        if set is not None:
-            self.wielded = Wielded(set.readSet("wielded"))
-            self.equipped = Equipped(set.readSet("equipped"))
+    """Main gear configuration class"""
+    def __init__(self, storage_set=None):
+        """Initialize gear configuration from storage or create defaults"""
+        if storage_set:
+            # Load from storage
+            self.wielded = Wielded(storage_set.readSet("wielded") if storage_set.contains("wielded") else None)
+            self.equipped = Equipped(storage_set.readSet("equipped") if storage_set.contains("equipped") else None)
+            self.worn_types = WornTypes(storage_set if storage_set.contains("worn_types") else None)
+            
+            # Check if any component created defaults and needs saving
+            if hasattr(self.worn_types, '_needs_save') and self.worn_types._needs_save:
+                # Save the configuration since we added defaults
+                import threading
+                threading.Timer(0.1, lambda: save_gear_configs()).start()
         else:
+            # Create defaults
             self.wielded = Wielded()
             self.equipped = Equipped()
+            self.worn_types = WornTypes()
     
     def store(self):
         """Returns a storage set representation"""
         set = storage.StorageSet()
         set.storeSet("wielded", self.wielded.store())
         set.storeSet("equipped", self.equipped.store())
+        set.storeSet("worn_types", self.worn_types.store())
         return set
 
 def save_gear_configs(data=None):
@@ -302,5 +393,231 @@ def is_valid_equipped_special_property(prop):
     """Check if equipped special property is valid"""
     return prop in get_equipped_special_properties()
 
+# Worn types helper functions
+def get_worn_types():
+    """Get list of all worn type names"""
+    config = get_gear_config()
+    if not config:
+        return []
+    return list(config.worn_types.worn_types.keys())
+
+def get_worn_type_count():
+    """Get the total number of worn types"""
+    return len(get_worn_types())
+
+def get_worn_type_object(worn_type):
+    """Get a worn type object for OLC editing"""
+    if worn_type_exists(worn_type):
+        return {'name': worn_type}
+    return None
+
+def set_worn_type_positions(worn_type, positions):
+    """Set positions for a worn type"""
+    try:
+        # Remove existing worn type
+        remove_worn_type(worn_type)
+        # Add it back with new positions
+        return add_worn_type(worn_type, positions)
+    except:
+        return False
+
+def get_available_body_positions():
+    """Get list of available body positions"""
+    # This should come from the body system, but for now return common positions
+    return [
+        'head', 'neck', 'shoulders', 'chest', 'back', 'arms', 'wrists', 
+        'hands', 'fingers', 'waist', 'legs', 'feet', 'face', 'ears',
+        'torso', 'abdomen', 'thighs', 'shins', 'ankles', 'toes'
+    ]
+
+def get_worn_type_positions(worn_type_name):
+    """Get positions for a specific worn type"""
+    config = get_gear_config()
+    if not config:
+        return []
+    worn_type = config.worn_types.worn_types.get(worn_type_name)
+    return worn_type.positions if worn_type else []
+
+def worn_type_exists(worn_type_name):
+    """Check if a worn type exists"""
+    config = get_gear_config()
+    if not config:
+        return False
+    return worn_type_name in config.worn_types.worn_types
+
+def is_builtin_worn_type(worn_type_name):
+    """Check if a worn type is built-in (cannot be deleted)"""
+    config = get_gear_config()
+    if not config:
+        return False
+    worn_type = config.worn_types.worn_types.get(worn_type_name)
+    return worn_type.builtin if worn_type else False
+
+def add_worn_type(worn_type_name, positions):
+    """Add a new worn type with specified positions"""
+    config = get_gear_config()
+    if not config:
+        return False
+    
+    if worn_type_exists(worn_type_name):
+        return False
+    
+    # Create new worn type
+    worn_type = WornType(worn_type_name, positions, False)
+    config.worn_types.worn_types[worn_type_name] = worn_type
+    
+    # Register with C system
+    try:
+        import mudsys
+        positions_str = ",".join(positions) if positions else ""
+        mudsys.add_worn_type(worn_type_name, positions_str)
+    except:
+        pass
+    
+    # Save configuration
+    save_gear_configs()
+    return True
+
+def remove_worn_type(worn_type_name):
+    """Remove a worn type (only if not built-in)"""
+    config = get_gear_config()
+    if not config:
+        return False
+    
+    if not worn_type_exists(worn_type_name):
+        return False
+    
+    if is_builtin_worn_type(worn_type_name):
+        return False
+    
+    # Remove from configuration
+    del config.worn_types.worn_types[worn_type_name]
+    
+    # Remove from C system
+    try:
+        import mudsys
+        mudsys.remove_worn_type(worn_type_name)
+    except:
+        pass
+    
+    # Save configuration
+    save_gear_configs()
+    return True
+
+def update_worn_type_positions(worn_type_name, positions):
+    """Update positions for an existing worn type"""
+    config = get_gear_config()
+    if not config:
+        return False
+    
+    worn_type = config.worn_types.worn_types.get(worn_type_name)
+    if not worn_type:
+        return False
+    
+    # Update positions
+    worn_type.positions = positions
+    
+    # Update C system
+    try:
+        import mudsys
+        mudsys.remove_worn_type(worn_type_name)
+        positions_str = ",".join(positions) if positions else ""
+        mudsys.add_worn_type(worn_type_name, positions_str)
+    except:
+        pass
+    
+    # Save configuration
+    save_gear_configs()
+    return True
+
+def get_available_body_positions():
+    """Get list of available body position types from body.c"""
+    try:
+        import world
+        return world.get_bodypos_types()
+    except:
+        # Fallback to basic position types
+        return [
+            "floating about head", "about body", "head", "face", "ear", "neck", 
+            "torso", "arm", "wing", "wrist", "left hand", "right hand", "finger", 
+            "waist", "leg", "left foot", "right foot", "hoof", "claw", "tail", "held",
+            "hands", "legs", "feet", "wings", "hooves"
+        ]
+
+def register_worn_types_with_c():
+    """Register all worn types with the C worn system during module initialization"""
+    config = get_gear_config()
+    if not config:
+        return
+    
+    registered_count = 0
+    for worn_type in config.worn_types.worn_types.values():
+        try:
+            import mudsys
+            # Convert positions list to comma-separated string for C function
+            positions_str = ",".join(worn_type.positions) if worn_type.positions else ""
+            mudsys.add_worn_type(worn_type.name, positions_str)
+            registered_count += 1
+        except Exception as e:
+            # Type might already exist, which is fine
+            pass
+    
+    if registered_count > 0:
+        import mud
+        mud.log_string(f"Registered {registered_count} worn types with C system.")
+
+def debug_worn_types():
+    """Debug function to see what's happening with worn types"""
+    try:
+        import mudsys
+        import mud
+        
+        # Check what C system has
+        c_worn_types = mudsys.get_worn_types()
+        mud.log_string(f"DEBUG: C worn types: {c_worn_types}")
+        
+        for worn_type_name in c_worn_types:
+            try:
+                positions = mudsys.get_worn_type_positions(worn_type_name)
+                mud.log_string(f"DEBUG: {worn_type_name} positions: {positions}")
+            except Exception as e:
+                mud.log_string(f"DEBUG: Failed to get positions for {worn_type_name}: {e}")
+        
+        # Check what our config has
+        config = get_gear_config()
+        if config:
+            our_types = list(config.worn_types.worn_types.keys())
+            mud.log_string(f"DEBUG: Our worn types: {our_types}")
+            
+            # Check if worn_types object exists but is empty
+            if hasattr(config, 'worn_types'):
+                mud.log_string(f"DEBUG: worn_types object exists, type: {type(config.worn_types)}")
+                if hasattr(config.worn_types, 'worn_types'):
+                    mud.log_string(f"DEBUG: worn_types.worn_types exists, type: {type(config.worn_types.worn_types)}, len: {len(config.worn_types.worn_types)}")
+                else:
+                    mud.log_string("DEBUG: worn_types.worn_types does not exist")
+            else:
+                mud.log_string("DEBUG: config.worn_types does not exist")
+        else:
+            mud.log_string("DEBUG: No gear config found")
+            
+        # Check gear_configs global
+        mud.log_string(f"DEBUG: gear_configs keys: {list(gear_configs.keys())}")
+        if "main" in gear_configs:
+            main_config = gear_configs["main"]
+            mud.log_string(f"DEBUG: main config type: {type(main_config)}")
+            if hasattr(main_config, 'worn_types'):
+                mud.log_string(f"DEBUG: main config has worn_types: {type(main_config.worn_types)}")
+            else:
+                mud.log_string("DEBUG: main config missing worn_types")
+            
+    except Exception as e:
+        import mud
+        mud.log_string(f"DEBUG: Error in debug_worn_types: {e}")
+
 # Initialize on module load
 load_gear_configs()
+# Register worn types with C system after loading
+register_worn_types_with_c()
+# Debug worn types to see what's happening
+debug_worn_types()

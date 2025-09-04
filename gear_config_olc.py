@@ -51,6 +51,7 @@ def gear_config_menu(sock, data):
 
 {c1{n) Edit wielded item configuration
 {c2{n) Edit equipped item configuration
+{c3{n) Edit worn types
 
 {cQ{n) Quit
 """)
@@ -64,6 +65,10 @@ def gear_config_chooser(sock, data, choice):
     elif choice == '2':
         olc.do_olc(sock, equipped_config_menu, equipped_config_chooser,
                    equipped_config_parser, None, data)
+        return MENU_NOCHOICE
+    elif choice == '3':
+        olc.do_olc(sock, worn_types_menu, worn_types_chooser,
+                   worn_types_parser, None, data)
         return MENU_NOCHOICE
     return MENU_CHOICE_INVALID
 
@@ -475,6 +480,209 @@ def equipped_properties_parser(sock, data, choice, arg):
         else:
             sock.send_raw("Property '%s' not found.\n" % arg.strip())
         return True
+    return False
+
+# Worn Types Menu
+def worn_types_menu(sock, data):
+    """Worn types configuration menu"""
+    from . import gear_config
+    
+    worn_types = gear_config.get_worn_types()
+    
+    # Format worn types with built-in markers
+    formatted_types = []
+    for worn_type in worn_types:
+        if gear_config.is_builtin_worn_type(worn_type):
+            formatted_types.append(f"{worn_type}*")
+        else:
+            formatted_types.append(worn_type)
+    
+    sock.send_raw("""
+{g+{n==============================================================================
+{cWorn Types Configuration{n
+{g+{n==============================================================================
+
+Current worn types ({y%d{n}) - {y*{n = built-in:
+%s
+{c1{n) Add worn type
+{c2{n) Remove worn type
+{c3{n) View worn type positions
+{c4{n) Edit worn type positions
+
+{cQ{n) Return to main menu
+""" % (
+        len(worn_types),
+        format_tabular_list(formatted_types)
+    ))
+
+def worn_types_chooser(sock, data, choice):
+    """Handle worn types menu choices"""
+    if choice == '1':
+        sock.send_raw("Enter new worn type name: ")
+        return 1
+    elif choice == '2':
+        sock.send_raw("Enter worn type to remove: ")
+        return 2
+    elif choice == '3':
+        sock.send_raw("Enter worn type to view positions: ")
+        return 3
+    elif choice == '4':
+        sock.send_raw("Enter worn type to edit positions: ")
+        return 4
+    return MENU_CHOICE_INVALID
+
+def worn_types_parser(sock, data, choice, arg):
+    """Parse worn types input"""
+    from . import gear_config
+    
+    if choice == 1 and arg:
+        # Add new worn type - create and start editing it
+        worn_type = arg.strip().lower()
+        if gear_config.worn_type_exists(worn_type):
+            sock.send_raw("Worn type '%s' already exists.\n" % worn_type)
+            return True
+        
+        # Create new worn type with empty positions
+        if gear_config.add_worn_type(worn_type, []):
+            sock.send_raw("Created new worn type: %s\n" % worn_type)
+            # Get the worn type object and start editing
+            worn_type_obj = gear_config.get_worn_type_object(worn_type)
+            if worn_type_obj:
+                olc.do_olc(sock, worn_type_edit_menu, worn_type_edit_chooser, worn_type_edit_parser, None, worn_type_obj)
+            return True
+        else:
+            sock.send_raw("Failed to add worn type '%s'\n" % worn_type)
+            return True
+    elif choice == 2 and arg:
+        # Remove worn type
+        worn_type = arg.strip().lower()
+        if not gear_config.worn_type_exists(worn_type):
+            sock.send_raw("Worn type '%s' not found.\n" % worn_type)
+        elif gear_config.is_builtin_worn_type(worn_type):
+            sock.send_raw("Cannot remove built-in worn type '%s'.\n" % worn_type)
+        else:
+            if gear_config.remove_worn_type(worn_type):
+                sock.send_raw("Removed worn type: %s\n" % worn_type)
+            else:
+                sock.send_raw("Failed to remove worn type: %s\n" % worn_type)
+        return True
+    elif choice == 3 and arg:
+        # View worn type positions
+        worn_type = arg.strip().lower()
+        if not gear_config.worn_type_exists(worn_type):
+            sock.send_raw("Worn type '%s' not found.\n" % worn_type)
+        else:
+            positions = gear_config.get_worn_type_positions(worn_type)
+            if positions:
+                builtin_marker = " (built-in)" if gear_config.is_builtin_worn_type(worn_type) else ""
+                sock.send_raw("Positions for '%s'%s: %s\n" % (worn_type, builtin_marker, ", ".join(positions)))
+            else:
+                sock.send_raw("Worn type '%s' has no positions defined.\n" % worn_type)
+        return True
+    elif choice == 4 and arg:
+        # Edit worn type positions - start subediting
+        worn_type = arg.strip().lower()
+        if not gear_config.worn_type_exists(worn_type):
+            sock.send_raw("Worn type '%s' not found.\n" % worn_type)
+            return True
+        
+        # Get the worn type object and start editing
+        worn_type_obj = gear_config.get_worn_type_object(worn_type)
+        if worn_type_obj:
+            olc.do_olc(sock, worn_type_edit_menu, worn_type_edit_chooser, worn_type_edit_parser, None, worn_type_obj)
+        else:
+            sock.send_raw("Failed to get worn type object for '%s'\n" % worn_type)
+        return True
+    return False
+
+# Worn type editing submenu
+def worn_type_edit_menu(sock, worn_type_obj):
+    """Display worn type editing menu"""
+    from . import gear_config
+    
+    worn_type = worn_type_obj.get('name', 'unknown')
+    positions = gear_config.get_worn_type_positions(worn_type)
+    
+    sock.send_raw("""
+{c== Worn Type Editor: %s =={n
+
+Current positions: {y%s{w
+
+{c1{n) Add position
+{c2{n) Remove position
+{cQ{n) Quit
+
+Enter choice: """ % (worn_type, ", ".join(positions) if positions else "none"))
+
+def worn_type_edit_chooser(sock, worn_type_obj, choice):
+    """Handle worn type editing menu choices"""
+    from . import gear_config
+    
+    if choice.lower() == 'q':
+        return MENU_QUIT
+    elif choice == '1':
+        # Show available positions when adding, like race positions does
+        available_positions = gear_config.get_available_body_positions()
+        sock.send_raw("\n{gAvailable body positions ({y" + str(len(available_positions)) + "{g):{n\n")
+        
+        # Format in columns with spacing
+        for i, pos in enumerate(available_positions):
+            if i % 4 == 0:
+                sock.send_raw("\n  {w")
+            sock.send_raw("%-18s" % pos)
+        sock.send_raw("{n\n\n{gEnter position to add:{n ")
+        return 1
+    elif choice == '2':
+        sock.send_raw("Enter position to remove: ")
+        return 2
+    return MENU_CHOICE_INVALID
+
+def worn_type_edit_parser(sock, worn_type_obj, choice, arg):
+    """Parse worn type editing input"""
+    from . import gear_config
+    
+    worn_type = worn_type_obj.get('name', 'unknown')
+    
+    if choice == 1 and arg:
+        # Add position
+        position = arg.strip().lower()
+        available_positions = gear_config.get_available_body_positions()
+        
+        if position not in available_positions:
+            sock.send_raw("Position '%s' is not a valid body position.\n" % position)
+            return True
+            
+        current_positions = gear_config.get_worn_type_positions(worn_type)
+        if position in current_positions:
+            sock.send_raw("Position '%s' is already in worn type '%s'.\n" % (position, worn_type))
+            return True
+            
+        # Add the position
+        new_positions = current_positions + [position]
+        if gear_config.set_worn_type_positions(worn_type, new_positions):
+            sock.send_raw("Added position '%s' to worn type '%s'.\n" % (position, worn_type))
+        else:
+            sock.send_raw("Failed to add position '%s'.\n" % position)
+        return True
+        
+    elif choice == 2 and arg:
+        # Remove position
+        position = arg.strip().lower()
+        current_positions = gear_config.get_worn_type_positions(worn_type)
+        
+        if position not in current_positions:
+            sock.send_raw("Position '%s' is not in worn type '%s'.\n" % (position, worn_type))
+            return True
+            
+        # Remove the position
+        new_positions = [p for p in current_positions if p != position]
+        if gear_config.set_worn_type_positions(worn_type, new_positions):
+            sock.send_raw("Removed position '%s' from worn type '%s'.\n" % (position, worn_type))
+        else:
+            sock.send_raw("Failed to remove position '%s'.\n" % position)
+        return True
+        
+        
     return False
 
 # Register the OLC command
