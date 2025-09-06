@@ -217,7 +217,7 @@ WIELDED_DURABILITY = 8
 WIELDED_MAX_DURABILITY = 9
 WIELDED_MATERIAL = 10
 WIELDED_SPECIAL_PROPERTIES = 12
-WIELDED_SPECIAL_ATTACKS = 0
+WIELDED_SPECIAL_ATTACKS = 13
 
 def wielded_menu(sock, data):
     """Display the wielded item editing menu"""
@@ -487,6 +487,8 @@ def wielded_to_proto(data):
         lines.append("me.get_type_data(\"wielded\").max_durability = %d" % data.max_durability)
     if data.material != "steel":
         lines.append("me.get_type_data(\"wielded\").material = \"%s\"" % data.material)
+    if data.special_properties:
+        lines.append("me.get_type_data(\"wielded\").special_properties = \"%s\"" % data.special_properties)
     if data.special_attacks:
         lines.append("me.get_type_data(\"wielded\").special_attacks = \"%s\"" % data.special_attacks)
     return "\n".join(lines) + ("\n" if lines else "")
