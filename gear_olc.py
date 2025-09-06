@@ -15,11 +15,20 @@ EQUIPPED_DURABILITY = 3
 EQUIPPED_MAX_DURABILITY = 4
 EQUIPPED_MATERIAL = 5
 EQUIPPED_PROPERTIES = 6
+EQUIPPED_WORN_TYPE = 7
 
 def equipped_menu(sock, data):
     """Display the equipped item editing menu"""
     valid_materials = gear_config.get_equipped_materials()
     valid_properties = gear_config.get_equipped_special_properties()
+    valid_worn_types = gear_config.get_worn_types()
+    
+    # Get positions for current worn type
+    worn_type_positions = ""
+    if data.worn_type:
+        positions = gear_config.get_worn_type_positions(data.worn_type)
+        if positions:
+            worn_type_positions = ", ".join(positions)
     
     sock.send_raw("""
 {g+{n==============================================================================
@@ -32,6 +41,8 @@ def equipped_menu(sock, data):
 {c4{n) Max Durability   : {y%d{n
 {c5{n) Material         : {y%s{n {g(Valid: %s){n
 {c6{n) Special Properties: {y%s{n {g(Valid: %s){n
+{c7{n) Worn Type        : {y%s{n {g(Valid: %s){n
+{g   equips to          : {c%s{n
 
 {cQ{n) Quit
 
@@ -43,7 +54,10 @@ Enter choice: """ % (
         data.material or "none",
         ", ".join(valid_materials[:3]) + ("..." if len(valid_materials) > 3 else ""),
         data.special_properties or "none",
-        ", ".join(valid_properties[:3]) + ("..." if len(valid_properties) > 3 else "")
+        ", ".join(valid_properties[:3]) + ("..." if len(valid_properties) > 3 else ""),
+        data.worn_type or "none",
+        ", ".join(valid_worn_types[:3]) + ("..." if len(valid_worn_types) > 3 else ""),
+        worn_type_positions or "none"
     ))
 
 def equipped_chooser(sock, data, option):
@@ -68,6 +82,26 @@ def equipped_chooser(sock, data, option):
     elif choice == '6':
         sock.send_raw("Enter special properties: ")
         return EQUIPPED_PROPERTIES
+    elif choice == '7':
+        # Show available worn types like worn.c does
+        valid_worn_types = gear_config.get_worn_types()
+        sock.send_raw("Equippable item types:\n")
+        
+        # Display types in columns like worn.c
+        col = 0
+        for worn_type in sorted(valid_worn_types):
+            col += 1
+            if col % 4 == 0:
+                sock.send_raw("  %-14s\n" % worn_type)
+            else:
+                sock.send_raw("  %-14s   " % worn_type)
+        
+        # Add final newline if needed
+        if col % 4 != 0:
+            sock.send_raw("\n")
+            
+        sock.send_raw("enter choice: ")
+        return EQUIPPED_WORN_TYPE
     else:
         return olc.MENU_CHOICE_INVALID
 
@@ -139,6 +173,16 @@ def equipped_parser(sock, data, choice, arg):
             data.special_properties = ", ".join(properties)
             return True
     
+    elif choice == EQUIPPED_WORN_TYPE:
+        worn_type = arg.strip().lower()
+        if gear_config.worn_type_exists(worn_type):
+            data.worn_type = worn_type
+            return True
+        else:
+            valid_worn_types = gear_config.get_worn_types()
+            sock.send_raw("Invalid worn type. Valid worn types are: %s\n" % ", ".join(valid_worn_types))
+            return False
+    
     return False
 
 def equipped_to_proto(data):
@@ -156,6 +200,8 @@ def equipped_to_proto(data):
         lines.append("me.get_type_data(\"equipped\").material = \"%s\"" % data.material)
     if data.special_properties:
         lines.append("me.get_type_data(\"equipped\").special_properties = \"%s\"" % data.special_properties)
+    if data.worn_type:
+        lines.append("me.get_type_data(\"equipped\").worn_type = \"%s\"" % data.worn_type)
     return "\n".join(lines) + ("\n" if lines else "")
 
 # Wielded item OLC menu choices

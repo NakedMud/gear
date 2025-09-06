@@ -540,7 +540,7 @@ def get_available_body_positions():
         return [
             "floating about head", "about body", "head", "face", "ear", "neck", 
             "torso", "arm", "wing", "wrist", "left hand", "right hand", "finger", 
-            "waist", "left leg", "right leg", "left foot", "right foot", "hoof", "claw", 
+            "waist", "leg", "left foot", "right foot", "hoof", "claw", 
             "tail", "held", "hands", "legs", "feet", "wings", "hooves"
         ]
 
