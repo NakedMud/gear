@@ -57,7 +57,7 @@ class Wielded:
             self.ranged_types = GearCategory(["bow", "crossbow", "sling", "thrown", "firearm"])
             self.materials = GearCategory(["steel", "iron", "bronze", "silver", "gold", "mithril", "adamantine", "wood", "bone", "crystal"])
             self.special_properties = GearCategory(["versatile", "offhand", "magical", "blessed", "cursed"])
-            self.special_attacks = GearCategory(["vorpal", "sharpness", "speed", "accuracy"])
+            self.special_attacks = GearCategory(["sharpness", "speed", "accuracy"])
     
     def store(self):
         """Returns a storage set representation"""
@@ -78,9 +78,9 @@ class Equipped:
             self.materials = GearCategory(set=set.readList("materials"))
             self.special_properties = GearCategory(set=set.readList("special_properties"))
         else:
-            self.armor_types = GearCategory(["light", "medium", "heavy", "shield"])
-            self.materials = GearCategory(["leather", "chainmail", "plate", "cloth", "dragonscale"])
-            self.special_properties = GearCategory(["magical", "blessed", "cursed", "clothing"])
+            self.armor_types = GearCategory(["clothing", "light", "medium", "heavy", "shield"])
+            self.materials = GearCategory(["leather", "cloth", "steel", "iron", "bronze", "silver", "gold", "mithril", "adamantine", "wood", "bone", "crystal" "dragonscale"])
+            self.special_properties = GearCategory(["magical", "blessed", "cursed"])
     
     def store(self):
         """Returns a storage set representation"""
@@ -563,61 +563,9 @@ def register_worn_types_with_c():
             pass
     
     if registered_count > 0:
-        import mud
-        mud.log_string(f"Registered {registered_count} worn types with C system.")
-
-def debug_worn_types():
-    """Debug function to see what's happening with worn types"""
-    try:
-        import mudsys
-        import mud
-        
-        # Check what C system has
-        c_worn_types = mudsys.get_worn_types()
-        mud.log_string(f"DEBUG: C worn types: {c_worn_types}")
-        
-        for worn_type_name in c_worn_types:
-            try:
-                positions = mudsys.get_worn_type_positions(worn_type_name)
-                mud.log_string(f"DEBUG: {worn_type_name} positions: {positions}")
-            except Exception as e:
-                mud.log_string(f"DEBUG: Failed to get positions for {worn_type_name}: {e}")
-        
-        # Check what our config has
-        config = get_gear_config()
-        if config:
-            our_types = list(config.worn_types.worn_types.keys())
-            mud.log_string(f"DEBUG: Our worn types: {our_types}")
-            
-            # Check if worn_types object exists but is empty
-            if hasattr(config, 'worn_types'):
-                mud.log_string(f"DEBUG: worn_types object exists, type: {type(config.worn_types)}")
-                if hasattr(config.worn_types, 'worn_types'):
-                    mud.log_string(f"DEBUG: worn_types.worn_types exists, type: {type(config.worn_types.worn_types)}, len: {len(config.worn_types.worn_types)}")
-                else:
-                    mud.log_string("DEBUG: worn_types.worn_types does not exist")
-            else:
-                mud.log_string("DEBUG: config.worn_types does not exist")
-        else:
-            mud.log_string("DEBUG: No gear config found")
-            
-        # Check gear_configs global
-        mud.log_string(f"DEBUG: gear_configs keys: {list(gear_configs.keys())}")
-        if "main" in gear_configs:
-            main_config = gear_configs["main"]
-            mud.log_string(f"DEBUG: main config type: {type(main_config)}")
-            if hasattr(main_config, 'worn_types'):
-                mud.log_string(f"DEBUG: main config has worn_types: {type(main_config.worn_types)}")
-            else:
-                mud.log_string("DEBUG: main config missing worn_types")
-            
-    except Exception as e:
-        import mud
-        mud.log_string(f"DEBUG: Error in debug_worn_types: {e}")
+        pass
 
 # Initialize on module load
 load_gear_configs()
 # Register worn types with C system after loading
 register_worn_types_with_c()
-# Debug worn types to see what's happening
-debug_worn_types()
